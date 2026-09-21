@@ -457,8 +457,6 @@ if command -v journalctl >/dev/null 2>&1; then
             sed -n 's/.*take up \([^ ]*\).*/\1/p')
 
         if [[ -n "${journal_size}" ]]; then
-            info "Journal size: ${journal_size}"
-
             journal_mib=$(echo "${journal_size}" | awk '
                 /K$/ {sub(/K$/, ""); print $1 / 1024; exit}
                 /M$/ {sub(/M$/, ""); print $1; exit}
