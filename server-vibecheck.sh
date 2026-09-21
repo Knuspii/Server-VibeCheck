@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-VERSION="v0.2"
+VERSION="v0.3"
 GREEN="\033[32m"
 YELLOW="\033[33m"
 BLUE="\033[34m"
@@ -17,26 +17,27 @@ DEBUG=false
 LOG_FILE=""
 
 # ---------------- FUNCTIONS ----------------
+
 ignore() {
-    echo -e "${GREY}[IGNORE] $1 ${RESET}"
+    print_line "${GREY}[IGNORE] $1 ${RESET}"
 }
 
 info() {
-    echo -e "${BLUE}[INFO]${RESET} $1"
+    print_line "${BLUE}[INFO]${RESET} $1"
 }
 
 ok() {
-    echo -e "${GREEN}[OK]${RESET} $1"
+    print_line "${GREEN}[OK]${RESET} $1"
 }
 
 warn() {
-    echo -e "${YELLOW}[WARN] $1 ${RESET}"
+    print_line "${YELLOW}[WARN] $1 ${RESET}"
     WARN_COUNT=$((WARN_COUNT + 1))
 }
 
 debug() {
     if [[ "${DEBUG}" == true ]]; then
-        echo -e "${GREY}[DEBUG] $1${RESET}"
+        print_line "${GREY}[DEBUG] $1${RESET}"
     fi
 }
 
@@ -57,6 +58,7 @@ Options:
   NO OPTION         Start scan
   -h, --help        Show this help message
   -l, --log <file>  Write output to log file
+  -u, --update      Update to the latest version
   -d, --debug       Enable debug output
   -v, --version     Show version
 
@@ -69,45 +71,130 @@ version() {
     echo "Made by Knuspii"
 }
 
+# ---------------- SPINNER ----------------
+
+SPINNER_PID=""
+
+spinner_draw() {
+    if [[ -t 1 ]]; then
+        printf "\r\033[K%s" "${SPINNER_LINE:-Checking server...}"
+    fi
+}
+
+spinner_clear() {
+    if [[ -t 1 ]]; then
+        printf "\r\033[K"
+    fi
+}
+
+spinner() {
+    local dots=0
+    if [[ ! -t 1 ]]; then
+        return
+    fi
+
+    tput civis 2>/dev/null || true
+
+    while true; do
+        case "${dots}" in
+            0)
+                SPINNER_LINE="Checking server"
+                ;;
+            1)
+                SPINNER_LINE="Checking server."
+                ;;
+            2)
+                SPINNER_LINE="Checking server.."
+                ;;
+            3)
+                SPINNER_LINE="Checking server..."
+                ;;
+        esac
+
+        spinner_draw
+        dots=$(( (dots + 1) % 4 ))
+        sleep 0.2
+    done
+}
+
+start_spinner() {
+    if [[ -t 1 ]]; then
+        echo
+        spinner &
+        SPINNER_PID=$!
+    fi
+}
+
+stop_spinner() {
+    if [[ -n "${SPINNER_PID}" ]]; then
+        kill "${SPINNER_PID}" 2>/dev/null || true
+        wait "${SPINNER_PID}" 2>/dev/null || true
+        SPINNER_PID=""
+    fi
+
+    if [[ -t 1 ]]; then
+        printf "\r\033[K"
+        tput cnorm 2>/dev/null || true
+    fi
+}
+
+print_line() {
+    if [[ -n "${SPINNER_PID}" ]]; then
+        spinner_clear
+    fi
+    printf "%b\n" "$1"
+    if [[ -n "${SPINNER_PID}" ]]; then
+        spinner_draw
+    fi
+}
+
 # ---------------- ARGUMENT PARSING ----------------
+
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -h|--help)
             usage
             exit 0
             ;;
-
         -l|--log)
             if [[ -n "${2:-}" && "${2}" != -* ]]; then
                 LOG_FILE="$2"
                 shift 2
             else
                 LOG_FILE="/var/log/server-vibecheck.log"
+                echo "Using default path: ${LOG_FILE}"
                 shift
             fi
             ;;
-
+        -u|--update|--upgrade|--install)
+            echo "Updating Server-VibeCheck..."
+            if command -v curl >/dev/null 2>&1; then
+                curl -L https://github.com/Knuspii/Server-VibeCheck/releases/latest/download/server-vibecheck.sh -o svc && sudo install -m 755 svc /usr/local/bin/server-vibecheck && rm scv
+                echo "Update complete."
+                server-vibecheck --version
+            else
+                echo "Error: curl is required for updating. Please install curl and try again."
+                exit 1
+            fi
+            exit 0
+            ;;
         -d|--debug|--verbose)
             DEBUG=true
             shift
             ;;
-
         -v|--version)
             version
             exit 0
             ;;
-
         --)
             shift
             break
             ;;
-
         -*)
             echo "Error: Unknown option: $1" >&2
             echo "Try 'server-vibecheck --help' for more information." >&2
             exit 2
             ;;
-
         *)
             echo "Error: Unexpected argument: $1" >&2
             echo "Try 'server-vibecheck --help' for more information." >&2
@@ -116,7 +203,8 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Logging
+# ---------------- LOGGING ----------------
+
 if [[ -n "${LOG_FILE}" ]]; then
     if ! touch "${LOG_FILE}" 2>/dev/null; then
         echo "Error: Cannot write to log file: ${LOG_FILE}" >&2
@@ -124,26 +212,32 @@ if [[ -n "${LOG_FILE}" ]]; then
     fi
 
     exec > >(tee -a "${LOG_FILE}") 2>&1
+    echo ""
+    echo "####################################"
+    echo ""
+    date
 fi
 
 # ---------------- HEADER ----------------
+
 echo ""
 echo -e "${YELLOW} ███▀█▄${BLUE}                               ${YELLOW} ▓██ █▄ ${BLUE}   ██          ${YELLOW} ███▀██ ${BLUE}█▄                █▄ ▄▄"
 echo -e "${YELLOW}▀███▄▄ ${BLUE} ▄█▀█▄ ▄█▀▀▄ ██ ▄▄ ▄█▀█▄ ▄█▀▀▄ ${YELLOW}▀███ ██ ${BLUE}▀▀ ██▀█▄ ▄█▀█▄ ${YELLOW}▄███    ${BLUE}██▀█▄ ▄█▀█▄ ▄█▀█▄ ██▀█▄"
 echo -e "${YELLOW} ▄▄▄ ██${BLUE} ██▀▀  ██    ▐█ █▌ ██▀▀  ██    ${YELLOW} ▀██ █▀ ${BLUE}█▄ ██ ██ ██▀▀  ${YELLOW} ███ ▄▄ ${BLUE}██ ██ ██▀▀  ██ ▄▄ ██ ██"
 echo -e "${YELLOW} ▀▀▀▀▀▀${BLUE}  ▀▀▀  ▀▀     ▀▀▀   ▀▀▀  ▀▀    ${YELLOW}  ▀▀▀▀  ${BLUE}▀▀ ▀▀▀▀   ▀▀▀  ${YELLOW}  ▀▀▀▀▀ ${BLUE}▀▀ ▀▀  ▀▀▀   ▀▀▀  ▀▀ ▀▀"
-echo ""
 echo "Server-VibeCheck ${VERSION}"
 echo -e "${RESET}---"
+
+start_spinner
+sleep 1
 
 debug "Debug mode enabled"
 debug "Running as user: $(id -un)"
 debug "Hostname: $(hostname)"
 debug "Kernel: $(uname -r)"
 
-sleep 1
-
 # ---------------- CPU, RAM, DISK ----------------
+
 debug "Checking CPU load..."
 load=$(awk '{print $1}' /proc/loadavg)
 cores=$(nproc)
@@ -173,6 +267,7 @@ fi
 
 debug "Checking disk usage..."
 EXCLUDES="tmpfs|devtmpfs|efivarfs|overlay|squashfs|proc|sysfs"
+
 while read -r fs _ _ _ pct mount; do
     if echo "${fs}" | grep -Eq "${EXCLUDES}"; then
         continue
@@ -194,7 +289,9 @@ while read -r fs _ _ _ pct mount; do
 done < <(df -P -x tmpfs -x devtmpfs | tail -n +2)
 
 # ---------------- DNS ----------------
+
 debug "Checking DNS resolution..."
+
 if command -v getent >/dev/null; then
     if getent hosts go.dev >/dev/null 2>&1; then
         ok "DNS resolution working"
@@ -206,7 +303,9 @@ else
 fi
 
 # ---------------- NTP ----------------
+
 debug "Checking NTP synchronization..."
+
 if command -v timedatectl >/dev/null; then
     if timedatectl show -p NTPSynchronized --value 2>/dev/null | grep -q yes; then
         ok "NTP synchronized"
@@ -218,7 +317,9 @@ else
 fi
 
 # ---------------- REBOOT ----------------
+
 debug "Checking reboot requirement..."
+
 if [[ -f /var/run/reboot-required ]]; then
     warn "System reboot required"
 else
@@ -226,7 +327,9 @@ else
 fi
 
 # ---------------- RAID, ZFS ----------------
+
 debug "Checking software RAID..."
+
 if [[ -f /proc/mdstat ]]; then
     if grep -qE '\[.*_.*\]' /proc/mdstat; then
         warn "Software RAID degraded"
@@ -240,6 +343,7 @@ else
 fi
 
 debug "Checking ZFS..."
+
 if command -v zpool >/dev/null; then
     if zpool status -x | grep -q "all pools are healthy"; then
         ok "ZFS pools healthy"
@@ -250,8 +354,34 @@ else
     ignore "No ZFS support detected"
 fi
 
+# ---------------- SMART ----------------
+
+debug "Checking SMART health..."
+
+if command -v smartctl >/dev/null 2>&1; then
+    while read -r device; do
+        [[ -z "${device}" ]] && continue
+
+        debug "Checking SMART health for ${device}..."
+
+        smart_output=$(smartctl -H "${device}" 2>/dev/null || true)
+
+        if echo "${smart_output}" | grep -qE "SMART overall-health self-assessment test result: PASSED|SMART Health Status: OK"; then
+            ok "SMART health: ${device} OK"
+        elif echo "${smart_output}" | grep -qE "FAILED|FAIL"; then
+            warn "SMART health: ${device} FAILED"
+        else
+            info "SMART health: ${device} unavailable"
+        fi
+    done < <(lsblk -dn -o NAME,TYPE | awk '$2 == "disk" {print "/dev/" $1}')
+else
+    ignore "smartctl not installed"
+fi
+
 # ---------------- OPEN PORTS / FIREWALL ----------------
+
 debug "Checking open ports..."
+
 if command -v ss >/dev/null; then
     ports=$(ss -tulnH | awk '{print $5}' | awk -F: '{print $NF}' | sort -n | uniq | tr '\n' ' ')
     info "Open ports: ${ports:-none}"
@@ -260,6 +390,7 @@ else
 fi
 
 debug "Checking firewall..."
+
 if command -v ufw >/dev/null; then
     ufw_status=$(ufw status 2>/dev/null || true)
 
@@ -270,21 +401,20 @@ if command -v ufw >/dev/null; then
     else
         warn "Firewall (UFW): INACTIVE"
     fi
-
 elif command -v firewall-cmd >/dev/null; then
-
     if firewall-cmd --state >/dev/null 2>&1; then
         ok "Firewall (Firewalld): active"
     else
         warn "Firewall (Firewalld): INACTIVE"
     fi
-
 else
     ignore "Firewall: No standard manager detected"
 fi
 
 # ---------------- PACKAGE UPDATES ----------------
+
 debug "Checking package updates..."
+
 declare -A managers=(
     [apt]="apt list --upgradable 2>/dev/null | tail -n +2 | wc -l"
     [dnf]="dnf check-update -q 2>/dev/null | wc -l"
@@ -294,7 +424,6 @@ declare -A managers=(
 
 for pm in "${!managers[@]}"; do
     if command -v "${pm}" >/dev/null; then
-
         debug "Checking updates using ${pm}..."
 
         raw_count=$(eval "${managers[${pm}]}" 2>/dev/null || echo 0)
@@ -312,35 +441,75 @@ for pm in "${!managers[@]}"; do
     fi
 done
 
-# ---------------- SYSTEMD SERVICES ----------------
-debug "Checking failed Systemd services..."
-if command -v systemctl >/dev/null; then
+# ---------------- JOURNAL / LOG SIZE ----------------
 
-    failed_services=$(
-        systemctl list-units \
-            --state=failed \
-            --plain \
-            --no-legend \
-            2>/dev/null |
-        awk '{print $1}' || true
-    )
+debug "Checking journal size..."
 
-    if [[ -z "${failed_services}" ]]; then
-        ok "All Systemd services running fine"
+if command -v journalctl >/dev/null 2>&1; then
+    journal_usage=$(journalctl --disk-usage 2>/dev/null || true)
+
+    if [[ -z "${journal_usage}" ]]; then
+        info "Unable to determine journal size"
+    elif echo "${journal_usage}" | grep -q "0B"; then
+        ok "Journal size: 0B"
     else
-        warn "Failed Systemd services: $(echo "${failed_services}" | tr '\n' ' ')"
-    fi
+        journal_size=$(echo "${journal_usage}" |
+            sed -n 's/.*take up \([^ ]*\).*/\1/p')
 
+        if [[ -n "${journal_size}" ]]; then
+            info "Journal size: ${journal_size}"
+
+            journal_mib=$(echo "${journal_size}" | awk '
+                /K$/ {sub(/K$/, ""); print $1 / 1024; exit}
+                /M$/ {sub(/M$/, ""); print $1; exit}
+                /G$/ {sub(/G$/, ""); print $1 * 1024; exit}
+                /T$/ {sub(/T$/, ""); print $1 * 1024 * 1024; exit}
+                /^[0-9.]+$/ {print $1 / 1024 / 1024; exit}
+            ')
+
+            if [[ -n "${journal_mib}" ]] &&
+               awk "BEGIN {exit !(${journal_mib} >= 2048)}"; then
+                warn "Journal size is large: ${journal_size}"
+            else
+                ok "Journal size is healthy: ${journal_size}"
+            fi
+        else
+            info "No persistent journal files found"
+        fi
+    fi
 else
-    ignore "systemctl not available"
+    ignore "journalctl not available"
+fi
+
+# ---------------- SYSTEMD SERVICES ----------------
+
+debug "Checking failed Systemd services..."
+
+if command -v systemctl >/dev/null 2>&1; then
+    if systemctl is-system-running >/dev/null 2>&1 || [[ "$(ps -p 1 -o comm= 2>/dev/null)" == "systemd" ]]; then
+        FAILED_SERVICES=$(systemctl --failed --no-legend --plain 2>/dev/null)
+
+        if [[ -z "${FAILED_SERVICES}" ]]; then
+            ok "Failed Systemd services: 0"
+        else
+            warn "Failed Systemd services:"
+            while IFS= read -r service; do
+                [[ -n "${service}" ]] && info "  ${service}"
+            done <<< "${FAILED_SERVICES}"
+        fi
+    else
+        ignore "systemd not running"
+    fi
+else
+    ignore "systemctl not installed"
 fi
 
 # ---------------- DOCKER ----------------
+
 debug "Checking Docker..."
+
 if command -v docker >/dev/null; then
-
     if docker info >/dev/null 2>&1; then
-
         running=$(docker ps -q 2>/dev/null | wc -l)
         unhealthy=$(docker ps --filter health=unhealthy -q 2>/dev/null | wc -l)
 
@@ -350,42 +519,37 @@ if command -v docker >/dev/null; then
         if [[ "${unhealthy}" -gt 0 ]]; then
             warn "Docker unhealthy containers: ${unhealthy}"
         fi
-
     else
         warn "docker installed but not accessible (daemon or permissions issue)"
     fi
-
 else
     ignore "docker not installed"
 fi
 
 # ---------------- PODMAN ----------------
+
 debug "Checking Podman..."
+
 if command -v podman >/dev/null; then
-
     if podman info >/dev/null 2>&1; then
-
         running=$(podman ps -q 2>/dev/null | wc -l)
 
         ok "Podman is working"
         ok "Podman containers running: ${running}"
-
     else
         warn "podman installed but not working"
     fi
-
 else
     ignore "podman not installed"
 fi
 
 # ---------------- KUBERNETES ----------------
+
 debug "Checking Kubernetes..."
+
 if command -v kubectl >/dev/null; then
-
     if kubectl get nodes --no-headers >/tmp/hd_k8s 2>/dev/null; then
-
         bad=$(grep -vc " Ready " /tmp/hd_k8s || true)
-
         rm -f /tmp/hd_k8s
 
         if [[ "${bad}" -eq 0 ]]; then
@@ -393,19 +557,22 @@ if command -v kubectl >/dev/null; then
         else
             warn "Kubernetes unhealthy nodes: ${bad}"
         fi
-
     else
-
         rm -f /tmp/hd_k8s
         warn "kubectl installed but cluster not reachable"
-
     fi
-
 else
     ignore "kubectl not installed"
 fi
 
 # ---------------- SUMMARY ----------------
+
+stop_spinner
 debug "Printing Summary..."
+
 echo "---"
-echo "Warnings: ${WARN_COUNT}"
+if [[ ${WARN_COUNT} -ge 1 ]]; then
+    echo -e "${YELLOW}Warnings: ${WARN_COUNT}${RESET}"
+else
+    echo -e "${GREEN}All Good.${RESET}"
+fi
