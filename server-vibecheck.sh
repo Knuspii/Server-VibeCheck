@@ -169,7 +169,7 @@ while [[ $# -gt 0 ]]; do
         -u|--update|--upgrade|--install)
             echo "Updating Server-VibeCheck..."
             if command -v curl >/dev/null 2>&1; then
-                curl -L https://github.com/Knuspii/Server-VibeCheck/releases/latest/download/server-vibecheck.sh -o svc && sudo install -m 755 svc /usr/local/bin/server-vibecheck && rm scv
+                curl -L https://github.com/Knuspii/Server-VibeCheck/releases/latest/download/server-vibecheck.sh -o svc && sudo install -m 755 svc /usr/local/bin/server-vibecheck && rm svc
                 echo "Update complete."
                 server-vibecheck --version
             else
