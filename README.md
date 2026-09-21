@@ -17,8 +17,8 @@ Well this script will help you with checking the most important things.
 ## Supports
 - Checks: CPU, RAM, Disk
 - Checks: DNS, NTP, Firewall, Open-Ports
-- Checks: RAID, ZFS
-- Checks: Package-Updates
+- Checks: Smartctl, RAID, ZFS
+- Checks: Package-Updates, Journalctl logsize
 - Checks: Systemd-Services
 - Checks: Docker, Podman, Kubernetes
 

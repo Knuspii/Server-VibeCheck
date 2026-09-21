@@ -171,6 +171,7 @@ while [[ $# -gt 0 ]]; do
             if command -v curl >/dev/null 2>&1; then
                 curl -L https://github.com/Knuspii/Server-VibeCheck/releases/latest/download/server-vibecheck.sh -o svc && sudo install -m 755 svc /usr/local/bin/server-vibecheck && rm scv
                 echo "Update complete."
+                server-vibecheck --version
             else
                 echo "Error: curl is required for updating. Please install curl and try again."
                 exit 1
@@ -353,6 +354,30 @@ else
     ignore "No ZFS support detected"
 fi
 
+# ---------------- SMART ----------------
+
+debug "Checking SMART health..."
+
+if command -v smartctl >/dev/null 2>&1; then
+    while read -r device; do
+        [[ -z "${device}" ]] && continue
+
+        debug "Checking SMART health for ${device}..."
+
+        smart_output=$(smartctl -H "${device}" 2>/dev/null || true)
+
+        if echo "${smart_output}" | grep -qE "SMART overall-health self-assessment test result: PASSED|SMART Health Status: OK"; then
+            ok "SMART health: ${device} OK"
+        elif echo "${smart_output}" | grep -qE "FAILED|FAIL"; then
+            warn "SMART health: ${device} FAILED"
+        else
+            info "SMART health: ${device} unavailable"
+        fi
+    done < <(lsblk -dn -o NAME,TYPE | awk '$2 == "disk" {print "/dev/" $1}')
+else
+    ignore "smartctl not installed"
+fi
+
 # ---------------- OPEN PORTS / FIREWALL ----------------
 
 debug "Checking open ports..."
@@ -415,6 +440,46 @@ for pm in "${!managers[@]}"; do
         ignore "${pm} not installed"
     fi
 done
+
+# ---------------- JOURNAL / LOG SIZE ----------------
+
+debug "Checking journal size..."
+
+if command -v journalctl >/dev/null 2>&1; then
+    journal_usage=$(journalctl --disk-usage 2>/dev/null || true)
+
+    if [[ -z "${journal_usage}" ]]; then
+        info "Unable to determine journal size"
+    elif echo "${journal_usage}" | grep -q "0B"; then
+        ok "Journal size: 0B"
+    else
+        journal_size=$(echo "${journal_usage}" |
+            sed -n 's/.*take up \([^ ]*\).*/\1/p')
+
+        if [[ -n "${journal_size}" ]]; then
+            info "Journal size: ${journal_size}"
+
+            journal_mib=$(echo "${journal_size}" | awk '
+                /K$/ {sub(/K$/, ""); print $1 / 1024; exit}
+                /M$/ {sub(/M$/, ""); print $1; exit}
+                /G$/ {sub(/G$/, ""); print $1 * 1024; exit}
+                /T$/ {sub(/T$/, ""); print $1 * 1024 * 1024; exit}
+                /^[0-9.]+$/ {print $1 / 1024 / 1024; exit}
+            ')
+
+            if [[ -n "${journal_mib}" ]] &&
+               awk "BEGIN {exit !(${journal_mib} >= 2048)}"; then
+                warn "Journal size is large: ${journal_size}"
+            else
+                ok "Journal size is healthy: ${journal_size}"
+            fi
+        else
+            info "No persistent journal files found"
+        fi
+    fi
+else
+    ignore "journalctl not available"
+fi
 
 # ---------------- SYSTEMD SERVICES ----------------
 
