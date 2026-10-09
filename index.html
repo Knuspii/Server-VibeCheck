@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="de">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="theme-color" content="#0b0d12" />
+        <meta
+            name="description"
+            content="Server-VibeCheck – simple server health checks."
+        />
+        <title>Server-VibeCheck</title>
+        <style>
+            :root {
+                color-scheme: dark;
+                --bg: #0b0d12;
+                --panel: #10141b;
+                --text: #f3f5f8;
+                --muted: #9aa7ba;
+                --green: #62f2a2;
+                --border: #303947;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                margin: 0;
+                min-height: 100vh;
+                padding: 64px 22px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                background: radial-gradient(
+                    ellipse at 50% 15%,
+                    #14251e 0,
+                    var(--bg) 48%
+                );
+                color: var(--text);
+                font-family:
+                    system-ui,
+                    -apple-system,
+                    BlinkMacSystemFont,
+                    "Segoe UI",
+                    sans-serif;
+            }
+            main {
+                width: min(100%, 820px);
+                text-align: center;
+            }
+            .logo {
+                display: block;
+                width: min(240px, 62vw);
+                max-height: 170px;
+                object-fit: contain;
+                margin: 0 auto 22px;
+            }
+            h1 {
+                margin: 0;
+                font-size: clamp(2.5rem, 8vw, 4.5rem);
+                line-height: 1.08;
+                letter-spacing: -0.06em;
+            }
+            h1 span {
+                color: var(--green);
+            }
+            .tagline {
+                margin: 18px 0 28px;
+                color: var(--muted);
+                font-size: clamp(1rem, 3vw, 1.2rem);
+            }
+            .github {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                padding: 12px 18px;
+                border: 1px solid var(--border);
+                border-radius: 9px;
+                color: var(--text);
+                text-decoration: none;
+                font-weight: 650;
+                transition:
+                    border-color 0.15s ease,
+                    transform 0.15s ease;
+            }
+            .github:hover {
+                border-color: var(--green);
+                transform: translateY(-1px);
+            }
+            h2 {
+                margin: 78px 0 14px;
+                color: var(--muted);
+                font:
+                    700 0.9rem/1.4 ui-monospace,
+                    SFMono-Regular,
+                    Menlo,
+                    Consolas,
+                    monospace;
+                letter-spacing: 0.12em;
+            }
+            .terminal {
+                overflow: hidden;
+                text-align: left;
+                border: 1px solid var(--border);
+                border-radius: 11px;
+                background: rgba(12, 15, 21, 0.92);
+            }
+            .terminal-bar {
+                display: flex;
+                gap: 8px;
+                padding: 14px 16px;
+                border-bottom: 1px solid #202733;
+            }
+            .dot {
+                width: 10px;
+                height: 10px;
+                border-radius: 50%;
+                background: #596272;
+            }
+            .dot:first-child {
+                background: #ff6868;
+            }
+            .dot:nth-child(2) {
+                background: #ffc34f;
+            }
+            .dot:nth-child(3) {
+                background: #36d879;
+            }
+            pre {
+                margin: 0;
+                padding: 18px;
+                overflow-x: auto;
+                white-space: pre-wrap;
+                overflow-wrap: anywhere;
+                color: #cbd6e5;
+                font:
+                    0.9rem/1.8 ui-monospace,
+                    SFMono-Regular,
+                    Menlo,
+                    Consolas,
+                    monospace;
+            }
+            .cmd {
+                color: var(--green);
+            }
+            .copy {
+                display: block;
+                margin: 12px 0 0 auto;
+                padding: 8px 12px;
+                border: 1px solid var(--border);
+                border-radius: 7px;
+                background: var(--panel);
+                color: var(--muted);
+                font:
+                    500 0.82rem system-ui,
+                    sans-serif;
+                cursor: pointer;
+            }
+            .copy:hover {
+                color: var(--text);
+                border-color: var(--green);
+            }
+            @media (max-width: 520px) {
+                body {
+                    padding: 48px 16px;
+                }
+                h2 {
+                    margin-top: 58px;
+                }
+                pre {
+                    font-size: 0.78rem;
+                    padding: 14px;
+                }
+            }
+            @media (prefers-reduced-motion: reduce) {
+                * {
+                    transition: none !important;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <main>
+            <img
+                class="logo"
+                src="https://raw.githubusercontent.com/Knuspii/Server-VibeCheck/main/assets/server-vibecheck_logo.png"
+                alt="Server-VibeCheck logo"
+                width="240"
+                height="160"
+            />
+
+            <h1>Server-<span>VibeCheck</span></h1>
+            <a href="https://www.gnu.org/software/bash/"
+                ><img
+                    src="https://img.shields.io/github/languages/top/Knuspii/Server-VibeCheck?color=green"
+                    alt="Bash"
+            /></a>
+            <a href="https://github.com/knuspii/server-vibecheck/stargazers"
+                ><img
+                    src="https://img.shields.io/github/stars/knuspii/server-vibecheck?style=social"
+                    alt="GitHub Stars"
+            /></a>
+            <p class="tagline">Check your server. Keep the vibe.</p>
+            <a
+                class="github"
+                href="https://github.com/Knuspii/Server-VibeCheck"
+                target="_blank"
+                rel="noopener noreferrer"
+                >View on GitHub ↗</a
+            >
+
+            <h2>INSTALLATION</h2>
+            <section class="terminal" aria-label="Installation command">
+                <div class="terminal-bar" aria-hidden="true">
+                    <span class="dot"></span><span class="dot"></span
+                    ><span class="dot"></span>
+                </div>
+                <pre
+                    id="install-command"
+                ><span class="cmd">curl -L</span> https://github.com/Knuspii/Server-VibeCheck/releases/latest/download/server-vibecheck.sh -o svc <span class="cmd">&amp;&amp; sudo</span> install -m 755 svc /usr/local/bin/server-vibecheck <span class="cmd">&amp;&amp;</span> rm svc</pre>
+            </section>
+            <button class="copy" type="button" id="copy-command">
+                Copy command
+            </button>
+        </main>
+        <script>
+            const command =
+                "curl -L https://github.com/Knuspii/Server-VibeCheck/releases/latest/download/server-vibecheck.sh -o svc && sudo install -m 755 svc /usr/local/bin/server-vibecheck && rm svc";
+            document
+                .getElementById("copy-command")
+                .addEventListener("click", async () => {
+                    const button = document.getElementById("copy-command");
+                    try {
+                        await navigator.clipboard.writeText(command);
+                        button.textContent = "Copied!";
+                        setTimeout(
+                            () => (button.textContent = "Copy command"),
+                            1600,
+                        );
+                    } catch {
+                        button.textContent = "Select and copy command";
+                    }
+                });
+        </script>
+    </body>
+</html>
