@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-VERSION="v0.3"
+VERSION="v0.4"
 GREEN="\033[32m"
 YELLOW="\033[33m"
 BLUE="\033[34m"
@@ -55,12 +55,14 @@ Usage:
     server-vibecheck [OPTIONS]
 
 Options:
-  NO OPTION         Start scan
-  -h, --help        Show this help message
-  -l, --log <file>  Write output to log file
-  -u, --update      Update to the latest version
-  -d, --debug       Enable debug output
-  -v, --version     Show version
+  NO OPTION             Start scan
+  -h, --help            Show this help message
+  -l, --log <file>      Write output to log file
+  -u, --update          Update to the latest version
+  -d, --debug           Enable debug output
+  -v, --version         Show version
+  --podman-user <user>  User whose Podman containers should be checked
+                        Use 'auto' to detect the user automatically
 
 Made by Knuspii
 EOF
@@ -178,6 +180,14 @@ while [[ $# -gt 0 ]]; do
             fi
             exit 0
             ;;
+	--podman-user)
+	    if [[ -z "${2:-}" ]]; then
+		echo "Missing argument for --podman-user"
+		exit 1
+	    fi
+	    PODMAN_USER="$2"
+	    shift 2
+	    ;;
         -d|--debug|--verbose)
             DEBUG=true
             shift
@@ -202,6 +212,16 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+# ---------------- PODMAN USER DETECT ----------------
+
+if [[ "${PODMAN_USER}" == "auto" ]]; then
+    if [[ -n "${SUDO_USER:-}" && "${SUDO_USER}" != "root" ]]; then
+        PODMAN_USER="${SUDO_USER}"
+    else
+        PODMAN_USER="${USER}"
+    fi
+fi
 
 # ---------------- LOGGING ----------------
 
@@ -528,17 +548,32 @@ fi
 
 debug "Checking Podman..."
 
-if command -v podman >/dev/null; then
-    if podman info >/dev/null 2>&1; then
-        running=$(podman ps -q 2>/dev/null | wc -l)
+if command -v podman >/dev/null 2>&1; then
 
+    PODMAN_CMD=(podman)
+
+    if [[ "${PODMAN_USER}" != "${USER}" ]]; then
+        PODMAN_CMD=(sudo -u "${PODMAN_USER}" podman)
+    fi
+    if "${PODMAN_CMD[@]}" info >/dev/null 2>&1; then
+        running=$("${PODMAN_CMD[@]}" ps -q 2>/dev/null | wc -l)
+        unhealthy=$("${PODMAN_CMD[@]}" ps --filter health=unhealthy -q 2>/dev/null | wc -l)
         ok "Podman is working"
-        ok "Podman containers running: ${running}"
+
+        if [[ "${running}" -eq 0 ]]; then
+            info "Podman found 0 running containers. Check with 'podman ps'"
+        else
+            ok "Podman containers running: ${running}"
+        fi
+
+        if [[ "${unhealthy}" -gt 0 ]]; then
+            warn "Podman unhealthy containers: ${unhealthy}"
+        fi
     else
-        warn "podman installed but not working"
+        warn "Podman installed but not working"
     fi
 else
-    ignore "podman not installed"
+    ignore "Podman not installed"
 fi
 
 # ---------------- KUBERNETES ----------------
