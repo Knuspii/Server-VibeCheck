@@ -15,6 +15,7 @@ GREY="\033[90m"
 WARN_COUNT=0
 DEBUG=false
 LOG_FILE=""
+PODMAN_USER="auto"
 
 # ---------------- FUNCTIONS ----------------
 
