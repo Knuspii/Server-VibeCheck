@@ -12,7 +12,8 @@
 <br>
 
 You quickly wanna check your server, but don't want to use 10+ tools to check everything? \
-Well this script will help you with checking the most important things.
+Well this script will help you with checking the most important things. \
+[![Architecture diagram](https://gitdiagram.com/diagram-badge.svg)](https://gitdiagram.com/knuspii/server-vibecheck?utm_source=readme&utm_medium=badge)
 
 ## Supports
 - Checks: CPU, RAM, Disk

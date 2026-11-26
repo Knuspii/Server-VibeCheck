@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-VERSION="v0.4"
+VERSION="v0.5"
 GREEN="\033[32m"
 YELLOW="\033[33m"
 BLUE="\033[34m"
@@ -14,8 +14,11 @@ RESET="\033[0m"
 GREY="\033[90m"
 WARN_COUNT=0
 DEBUG=false
-LOG_FILE=""
+DEFAULT_LOG_FILE="/var/log/server-vibecheck.log"
 PODMAN_USER="auto"
+PARENT_PID=$$
+LOG_FILE=""
+SPINNER_PID=""
 
 # ---------------- FUNCTIONS ----------------
 
@@ -76,8 +79,6 @@ version() {
 
 # ---------------- SPINNER ----------------
 
-SPINNER_PID=""
-
 spinner_draw() {
     if [[ -t 1 ]]; then
         printf "\r\033[K%s" "${SPINNER_LINE:-Checking server...}"
@@ -96,9 +97,10 @@ spinner() {
         return
     fi
 
+    trap 'tput cnorm 2>/dev/null; exit 0' TERM
     tput civis 2>/dev/null || true
 
-    while true; do
+    while kill -0 "${PARENT_PID}" 2>/dev/null; do
         case "${dots}" in
             0)
                 SPINNER_LINE="Checking server"
@@ -119,6 +121,13 @@ spinner() {
         sleep 0.2
     done
 }
+
+cleanup() {
+    stop_spinner
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 start_spinner() {
     if [[ -t 1 ]]; then
@@ -164,8 +173,7 @@ while [[ $# -gt 0 ]]; do
                 LOG_FILE="$2"
                 shift 2
             else
-                LOG_FILE="/var/log/server-vibecheck.log"
-                echo "Using default path: ${LOG_FILE}"
+                echo "Using default path: ${DEFAULT_LOG_FILE}"
                 shift
             fi
             ;;
@@ -241,11 +249,10 @@ fi
 
 # ---------------- HEADER ----------------
 
-echo ""
-echo -e "${YELLOW} ███▀█▄${BLUE}                               ${YELLOW} ▓██ █▄ ${BLUE}   ██          ${YELLOW} ███▀██ ${BLUE}█▄                █▄ ▄▄"
-echo -e "${YELLOW}▀███▄▄ ${BLUE} ▄█▀█▄ ▄█▀▀▄ ██ ▄▄ ▄█▀█▄ ▄█▀▀▄ ${YELLOW}▀███ ██ ${BLUE}▀▀ ██▀█▄ ▄█▀█▄ ${YELLOW}▄███    ${BLUE}██▀█▄ ▄█▀█▄ ▄█▀█▄ ██▀█▄"
-echo -e "${YELLOW} ▄▄▄ ██${BLUE} ██▀▀  ██    ▐█ █▌ ██▀▀  ██    ${YELLOW} ▀██ █▀ ${BLUE}█▄ ██ ██ ██▀▀  ${YELLOW} ███ ▄▄ ${BLUE}██ ██ ██▀▀  ██ ▄▄ ██ ██"
-echo -e "${YELLOW} ▀▀▀▀▀▀${BLUE}  ▀▀▀  ▀▀     ▀▀▀   ▀▀▀  ▀▀    ${YELLOW}  ▀▀▀▀  ${BLUE}▀▀ ▀▀▀▀   ▀▀▀  ${YELLOW}  ▀▀▀▀▀ ${BLUE}▀▀ ▀▀  ▀▀▀   ▀▀▀  ▀▀ ▀▀"
+echo -e "${BLUE}
+╔═╗┌─┐┬─┐┬  ┬┌─┐┬─┐╦  ╦┬┌┐ ┌─┐╔═╗┬ ┬┌─┐┌─┐┬┌─
+╚═╗├┤ ├┬┘└┐┌┘├┤ ├┬┘╚╗╔╝│├┴┐├┤ ║  ├─┤├┤ │  ├┴┐
+╚═╝└─┘┴└─ └┘ └─┘┴└─ ╚╝ ┴└─┘└─┘╚═╝┴ ┴└─┘└─┘┴ ┴"
 echo "Server-VibeCheck ${VERSION}"
 echo -e "${RESET}---"
 
